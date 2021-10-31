@@ -1,0 +1,5 @@
+selenium==4.0.0
+jedi==0.17.2
+webdriver-manager==3.5.1
+aiogram==2.15
+Pyrebase4==4.5.0
