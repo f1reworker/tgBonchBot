@@ -1,6 +1,6 @@
 from aiogram import Bot, Dispatcher, types, executor
 import time
-
+import aiogram.utils.markdown as fmt
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -87,9 +87,54 @@ async def false(message: types.Message):
 
 @bot.message_handler(lambda message: message.text == "Хуй")
 async def zxc(message: types.Message):
-    await message.reply("Сам хуй")
+    message.reply("Сам хуй!")
 
+@bot.message_handler(lambda message: message.text == "Расписание на неделю")
+async def false(message: types.Message):
+    user_id = message.from_user.id
+    parseTable(db.child("Users").child(user_id).get().val(), user_id)
 
+@bot.message_handler(lambda message: message.text == "Расписание сегодня")
+async def false(message: types.Message):
+    user_id = message.from_user.id
+    schedule = db.child("Users Schedule").child(user_id).get().val()
+    answer = ""
+    for i in range(0, len(schedule)):
+        answer += (schedule[i][0]+ 2*"\n" + fmt.hbold(schedule[i][1])+ "\n" + schedule[i][2]+"\n" +fmt.hcode(schedule[i][3]) + 3*"\n")
+    await message.answer(answer, parse_mode=types.ParseMode.HTML)
+
+def parseTable(user, user_id):
+    driver = webdriver.Chrome(service = s, options = chrome_options)
+    driver.get(url)
+    try:
+        login = WebDriverWait(driver, 1).until(
+        EC.visibility_of_element_located((By.NAME, "users")))
+    finally:
+        login.send_keys(user["login"])
+        driver.find_element(By.NAME,"parole").send_keys(user["password"])
+        driver.find_element(By.NAME, "logButton").click()
+        try:
+            button = WebDriverWait(driver, 1).until(EC.visibility_of_element_located((By.CLASS_NAME, "lm_item")))
+        finally:
+            button.click()
+            try:
+                sch = WebDriverWait(driver, 1).until(EC.visibility_of_element_located((By.LINK_TEXT, "Расписание")))
+            finally:
+                sch.click()
+                table = WebDriverWait(driver, 1).until(EC.visibility_of_element_located((By.XPATH, '//*[@id="rightpanel"]/div/table/tbody')))
+                rows = table.find_elements(By.TAG_NAME, "tr")
+                key = ""
+                for row in rows:
+                    matrixColumn = []
+                    column = row.find_elements(By.TAG_NAME, "td")
+                    if len(column)==1:
+                        key = column[0].text.split("\n")[1].replace(".", "-")
+                    else:
+                        for col in column:
+                            matrixColumn.append(col.text.replace("\n", " "))
+                        db.child("Users Schedule").child(user_id).update({key: str(matrixColumn)})
+                
+                    
 
 
 
