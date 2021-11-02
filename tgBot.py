@@ -1,6 +1,8 @@
+
 from aiogram import Bot, Dispatcher, types, executor
 import time
 import aiogram.utils.markdown as fmt
+
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -11,6 +13,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 import pyrebase
+import aioschedule
+import asyncio
 
 firebaseConfig = {
     "apiKey": "AIzaSyA6eRXO1BLuAZ3OTLvSwKbtj85Ow9E-gMo",
@@ -35,6 +39,7 @@ chrome_options.add_argument("--no-sandbox")
 
 
 token = Bot(token="2087293427:AAEqHp5QE7BK_7G8JNlDUdbhtKi9EqpMQdI")
+#token = Bot(token="2057472245:AAHXiB2teJOWQa7CXwH0uLd8cJItn4YvD4A")
 bot = Dispatcher(token)
 @bot.message_handler(commands="start")
 async def start(message: types.Message):
@@ -87,12 +92,13 @@ async def false(message: types.Message):
 
 @bot.message_handler(lambda message: message.text == "Хуй")
 async def zxc(message: types.Message):
-    message.reply("Сам хуй!")
+    await message.reply("Сам хуй!")
+    print(message)
 
 @bot.message_handler(lambda message: message.text == "Расписание на неделю")
 async def false(message: types.Message):
     user_id = message.from_user.id
-    parseTable(db.child("Users").child(user_id).get().val(), user_id)
+    #parseTable(db.child("Users").child(user_id).get().val(), user_id)
 
 @bot.message_handler(lambda message: message.text == "Расписание сегодня")
 async def false(message: types.Message):
@@ -102,6 +108,26 @@ async def false(message: types.Message):
     for i in range(0, len(schedule)):
         answer += (schedule[i][0]+ 2*"\n" + fmt.hbold(schedule[i][1])+ "\n" + schedule[i][2]+"\n" +fmt.hcode(schedule[i][3]) + 3*"\n")
     await message.answer(answer, parse_mode=types.ParseMode.HTML)
+@bot.poll_answer_handler()
+async def pollAnswer(answer: types.PollAnswer):
+    user_id = answer["user"]["id"]
+    timeSched = []
+    for i in answer["option_ids"]:
+        timeLesson = db.child("Users Schedule").child(user_id).child(int(i)).get().val()[0].split("-")[0].split("(")[-1].replace(".", ":")
+        timeLesson = timeLesson.split(":")
+        timeLesson = str(int(timeLesson[0])-3) + ":" + timeLesson[1]
+        if len(timeLesson)==4:  timeLesson = "0"+timeLesson
+        timeSched.append(timeLesson)
+    for q in range (0, len(timeSched)):
+            if timeSched[q]==timeSched[q-1] and len(timeSched)!=1:
+                Sched = timeSched[q].split(":")
+                timeSched = Sched[0]+":"+str(int(Sched[1])+3)
+                db.child("Schedule").child(timeSched).child(user_id).set(False)
+                print(timeSched)
+            else:
+                print(timeSched[q])
+                db.child("Schedule").child(timeSched[q]).child(user_id).set(False)
+    print(timeSched)
 
 def parseTable(user, user_id):
     driver = webdriver.Chrome(service = s, options = chrome_options)
@@ -157,4 +183,33 @@ def checkAuth(loginUser, passwordUser):
         else:
             driver.quit()
             return True
-executor.start_polling(bot, skip_updates=True)
+
+async def senMessage():
+    users = db.child("Users").get().each()
+    for user in users:
+        options = []
+        lesson = db.child("Users Schedule").child(user).get().val()
+
+        if lesson!=None:    
+            for les in lesson:
+                if len(les[1])>40:
+                    lesone = les[1][:41] + ".."
+                else:
+                    lesone = les[1]
+                options.append(les[0]+" "+ lesone +" "+les[2]+" "+les[3])
+            await bot.bot.send_poll(is_anonymous=False, allows_multiple_answers=True, question="На каких парах отмечать? Пожалуйста, не выбирайте пары, на которых преподаватель не начинает занятие. Если ин яз, то тыкнуть на 2 пункта, сорри это мой говнокод, вскоре исправлю. Если не отмечать - не голосуйте", 
+        options=options, chat_id=user)
+#TODO: добавить время закрытия
+async def scheduler():
+    aioschedule.every().day.at("5:00").do(senMessage)
+    while True:
+        await aioschedule.run_pending()
+        await asyncio.sleep(1)
+
+async def on_startup(_):
+    asyncio.create_task(scheduler())
+
+if __name__ == '__main__':
+    executor.start_polling(bot, skip_updates=False, on_startup=on_startup)
+
+
