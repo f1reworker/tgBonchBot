@@ -201,7 +201,7 @@ async def senMessage():
         options=options, chat_id=user)
 #TODO: добавить время закрытия
 async def scheduler():
-    aioschedule.every().day.at("5:00").do(senMessage)
+    aioschedule.every().day.at("05:00").do(senMessage)
     while True:
         await aioschedule.run_pending()
         await asyncio.sleep(1)
