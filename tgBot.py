@@ -124,7 +124,8 @@ async def pollAnswer(answer: types.PollAnswer):
     for q in range (0, len(timeSched)):
             if timeSched[q]==timeSched[q-1] and len(timeSched)!=1:
                 Sched = timeSched[q].split(":")
-                timeSched = Sched[0]+":"+str(int(Sched[1])+3)
+                timeSched = Sched[0]+":"+str(int(Sched[1])+5)
+                if len(timeSched)==4:  timeSched = timeSched.split(":")[0]+":"+"0"+timeSched.split(":")[1]
                 db.child("Schedule").child(timeSched).child(user_id).set(False)
                 print(timeSched)
             else:
