@@ -1,20 +1,19 @@
 
-from aiogram import Bot, Dispatcher, types, executor
-import time
-import aiogram.utils.markdown as fmt
-
-
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.common.exceptions import UnexpectedAlertPresentException
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
-import pyrebase
-import aioschedule
 import asyncio
+import time
+
+import aiogram.utils.markdown as fmt
+import aioschedule
+import pyrebase
+from aiogram import Bot, Dispatcher, executor, types
+from selenium import webdriver
+from selenium.common.exceptions import UnexpectedAlertPresentException
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
+from webdriver_manager.chrome import ChromeDriverManager
 
 firebaseConfig = {
     "apiKey": "AIzaSyA6eRXO1BLuAZ3OTLvSwKbtj85Ow9E-gMo",
@@ -96,24 +95,28 @@ async def zxc(message: types.Message):
     print(message)
 
 @bot.message_handler(lambda message: message.text == "Расписание на неделю")
-async def false(message: types.Message):
+async def scheduleWeek(message: types.Message):
     user_id = message.from_user.id
     #parseTable(db.child("Users").child(user_id).get().val(), user_id)
 
 @bot.message_handler(lambda message: message.text == "Расписание сегодня")
-async def false(message: types.Message):
+async def scheduleDay(message: types.Message):
     user_id = message.from_user.id
     schedule = db.child("Users Schedule").child(user_id).get().val()
     answer = ""
-    for i in range(0, len(schedule)):
-        answer += (schedule[i][0]+ 2*"\n" + fmt.hbold(schedule[i][1])+ "\n" + schedule[i][2]+"\n" +fmt.hcode(schedule[i][3]) + 3*"\n")
-    await message.answer(answer, parse_mode=types.ParseMode.HTML)
+    if schedule!=None:
+        for i in range(0, len(schedule)):
+            answer += (schedule[i][0]+ 2*"\n" + fmt.hbold(schedule[i][1])+ "\n" + schedule[i][2]+"\n" +fmt.hcode(schedule[i][3]) + 3*"\n")
+        await message.answer(answer, parse_mode=types.ParseMode.HTML)
+    else:   await message.answer("Сегодня нет занятий.")
 @bot.poll_answer_handler()
 async def pollAnswer(answer: types.PollAnswer):
     user_id = answer["user"]["id"]
     timeSched = []
     for i in answer["option_ids"]:
-        timeLesson = db.child("Users Schedule").child(user_id).child(int(i)).get().val()[0].split("-")[0].split("(")[-1].replace(".", ":")
+        timeLesson = db.child("Users Schedule").child(user_id).child(int(i)).get().val()
+        if timeLesson==None:    return
+        timeLesson = timeLesson[0].split("-")[0].split("(")[-1].replace(".", ":")
         timeLesson = timeLesson.split(":")
         timeLesson = str(int(timeLesson[0])-3) + ":" + timeLesson[1]
         if len(timeLesson)==4:  timeLesson = "0"+timeLesson
@@ -188,7 +191,7 @@ async def senMessage():
     users = db.child("Users").get().each()
     for user in users:
         options = []
-        lesson = db.child("Users Schedule").child(user).get().val()
+        lesson = db.child("Users Schedule").child(user.key()).get().val()
 
         if lesson!=None:    
             for les in lesson:
@@ -197,8 +200,9 @@ async def senMessage():
                 else:
                     lesone = les[1]
                 options.append(les[0]+" "+ lesone +" "+les[2]+" "+les[3])
-            await bot.bot.send_poll(is_anonymous=False, allows_multiple_answers=True, question="На каких парах отмечать? Пожалуйста, не выбирайте пары, на которых преподаватель не начинает занятие. Если ин яз, то тыкнуть на 2 пункта, сорри это мой говнокод, вскоре исправлю. Если не отмечать - не голосуйте", 
-        options=options, chat_id=user)
+            options.append("Не отмечать")
+            await bot.bot.send_poll(is_anonymous=False, allows_multiple_answers=True, question="На каких парах отмечать? Пожалуйста, не выбирайте пары, на которых преподаватель не начинает занятие. Если ин яз, то тыкнуть на 2 пункта, сорри это мой говнокод, вскоре исправлю.", 
+        options=options, chat_id=user.key())
 #TODO: добавить время закрытия
 async def scheduler():
     aioschedule.every().day.at("05:00").do(senMessage)
@@ -211,5 +215,4 @@ async def on_startup(_):
 
 if __name__ == '__main__':
     executor.start_polling(bot, skip_updates=False, on_startup=on_startup)
-
 
