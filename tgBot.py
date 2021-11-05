@@ -3,6 +3,7 @@ import asyncio
 import time
 
 import aiogram.utils.markdown as fmt
+from aiogram.utils.exceptions import BotBlocked
 import aioschedule
 import pyrebase
 from aiogram import Bot, Dispatcher, executor, types
@@ -37,9 +38,17 @@ chrome_options.add_argument("--disable-dev-shm-usage")
 chrome_options.add_argument("--no-sandbox")
 
 numberWeek = 0
-#token = Bot(token="2087293427:AAEqHp5QE7BK_7G8JNlDUdbhtKi9EqpMQdI")
-token = Bot(token="2057472245:AAHXiB2teJOWQa7CXwH0uLd8cJItn4YvD4A")
+token = Bot(token="2087293427:AAEqHp5QE7BK_7G8JNlDUdbhtKi9EqpMQdI")
+#token = Bot(token="2057472245:AAHXiB2teJOWQa7CXwH0uLd8cJItn4YvD4A")
 bot = Dispatcher(token)
+
+@bot.errors_handler(exception=BotBlocked)
+async def error_bot_blocked(update: types.Update):
+    user_id = update.message.chat.id
+    db.child("Users Schedule").child(user_id).remove()
+    db.child("Users").child(user_id).remove()
+    return True
+
 @bot.message_handler(commands="start")
 async def start(message: types.Message):
     user_id = message.from_user.id
@@ -97,29 +106,43 @@ async def zxc(message: types.Message):
 #TODO докинуть номер недели, вытаскивать в изменении
 @bot.message_handler(lambda message: message.text == "Расписание на неделю")
 async def scheduleWeek(message: types.Message):
-    await message.answer("Смотрим Ваше расписание.")
     user_id = message.from_user.id
     kb = types.InlineKeyboardMarkup(row_width=2)
     buttons = [types.InlineKeyboardButton(text="Предыдущая неделя", callback_data="previousWeek"), types.InlineKeyboardButton(text="Следующая неделя", callback_data="nextWeek")]
     kb.add(*buttons)
-    numberWeek = 0
-    answer = db.child("Table").child(user_id).child(numberWeek).get().val()
-    if answer!=None:
+    numberWeek = db.child("Number Week").get().val()
+    answerSchedule = db.child("Table").child(user_id).child(numberWeek).get().val()
+    answer = fmt.hbold("Неделя №") + fmt.hbold(str(numberWeek)) + "\n" + answerSchedule
+    if answerSchedule!=None:
+        answer = fmt.hbold("Неделя №") + fmt.hbold(str(numberWeek)) + "\n" + answerSchedule
         await message.answer(answer, parse_mode=types.ParseMode.HTML, reply_markup=kb)
     else:   await message.answer("Нет данных", reply_markup=kb)
 
 
 @bot.callback_query_handler(text="nextWeek")
 async def send_random_value(call: types.CallbackQuery):
-    print(call)
+    numberWeek = int(call.message.text.split("№")[1].split("\n")[0])
     kb = types.InlineKeyboardMarkup(row_width=2)
     buttons = [types.InlineKeyboardButton(text="Предыдущая неделя", callback_data="previousWeek"), types.InlineKeyboardButton(text="Следующая неделя", callback_data="nextWeek")]
     kb.add(*buttons)
-    await call.message.edit_text(db.child("Table").child(call.from_user.id).child(1).get().val(), parse_mode=types.ParseMode.HTML, reply_markup=kb)
+    answerSchedule = db.child("Table").child(call.from_user.id).child(numberWeek+1).get().val()
+    if answerSchedule!=None:
+        answer = fmt.hbold("Неделя №") + fmt.hbold(str(numberWeek+1)) +  "\n" + answerSchedule
+        await call.message.edit_text(answer, parse_mode=types.ParseMode.HTML, reply_markup=kb)
+    else:   await call.message.edit_text(fmt.hbold("Неделя №") + fmt.hbold(str(numberWeek+1)) +  2*"\n" + "Данных нет.", parse_mode=types.ParseMode.HTML, reply_markup=kb)
 
 @bot.callback_query_handler(text="previousWeek")
 async def send_random_value(call: types.CallbackQuery):
-    await call.message.answer("p[o[[po[")
+    numberWeek = int(call.message.text.split("№")[1].split("\n")[0])
+    kb = types.InlineKeyboardMarkup(row_width=2)
+    buttons = [types.InlineKeyboardButton(text="Предыдущая неделя", callback_data="previousWeek"), types.InlineKeyboardButton(text="Следующая неделя", callback_data="nextWeek")]
+    kb.add(*buttons)
+    answerSchedule = db.child("Table").child(call.from_user.id).child(numberWeek-1).get().val()
+    if numberWeek==1:   return
+    if answerSchedule!=None:
+        answer = fmt.hbold("Неделя №") + fmt.hbold(str(numberWeek-1)) +  "\n" + answerSchedule
+        await call.message.edit_text(answer, parse_mode=types.ParseMode.HTML, reply_markup=kb)
+    else:   await call.message.edit_text(fmt.hbold("Неделя №") + fmt.hbold(str(numberWeek-1)) +  2*"\n" + "Данных нет.", parse_mode=types.ParseMode.HTML, reply_markup=kb)
 
 @bot.message_handler(lambda message: message.text == "Расписание сегодня")
 async def scheduleDay(message: types.Message):
@@ -128,7 +151,7 @@ async def scheduleDay(message: types.Message):
     answer = ""
     if schedule!=None:
         for i in range(0, len(schedule)):
-            answer += (schedule[i][0]+ 2*"\n" + fmt.hbold(schedule[i][1])+ "\n" + schedule[i][2]+"\n" +fmt.hcode(schedule[i][3]) + 3*"\n")
+            answer += (schedule[i][0]+ "\n" + "     " + fmt.hbold(schedule[i][1].split("\n")[0]) + "\n" + "       " + fmt.hitalic(schedule[i][1].split("\n")[1])+ "\n" + "     " + schedule[i][2]+"\n" + "     " +fmt.hcode(schedule[i][3]) + 2*"\n")
         await message.answer(answer, parse_mode=types.ParseMode.HTML)
     else:   await message.answer("Сегодня нет занятий.")
 @bot.poll_answer_handler()
@@ -185,16 +208,17 @@ async def senMessage():
         if lesson!=None:    
             for les in lesson:
                 if len(les[1])>40:
-                    lesone = les[1][:41] + ".."
+                    lesone = les[1][:41] + "..."
                 else:
                     lesone = les[1]
-                options.append(les[0]+" "+ lesone +" "+les[2]+" "+les[3])
+                options.append(les[0]+" "+ lesone + " "+les[3].replace.split(",")[0])
             options.append("Не отмечать")
             await bot.bot.send_poll(is_anonymous=False, allows_multiple_answers=True, question="На каких парах отмечать? Пожалуйста, не выбирайте пары, на которых преподаватель не начинает занятие. Если ин яз, то тыкнуть на 2 пункта, сорри это мой говнокод, вскоре исправлю.", 
         options=options, chat_id=user.key())
+        if user==users[-1]: return
 #TODO: добавить время закрытия
 async def scheduler():
-    aioschedule.every().day.at("10:33").do(senMessage)
+    aioschedule.every().day.at("5:30").do(senMessage)
     while True:
         await aioschedule.run_pending()
         await asyncio.sleep(1)
