@@ -36,9 +36,9 @@ chrome_options.add_argument("--disable-gpu")
 chrome_options.add_argument("--disable-dev-shm-usage")
 chrome_options.add_argument("--no-sandbox")
 
-
-token = Bot(token="2087293427:AAEqHp5QE7BK_7G8JNlDUdbhtKi9EqpMQdI")
-#token = Bot(token="2057472245:AAHXiB2teJOWQa7CXwH0uLd8cJItn4YvD4A")
+numberWeek = 0
+#token = Bot(token="2087293427:AAEqHp5QE7BK_7G8JNlDUdbhtKi9EqpMQdI")
+token = Bot(token="2057472245:AAHXiB2teJOWQa7CXwH0uLd8cJItn4YvD4A")
 bot = Dispatcher(token)
 @bot.message_handler(commands="start")
 async def start(message: types.Message):
@@ -51,7 +51,8 @@ async def start(message: types.Message):
     else:
         await message.answer("Введите логин от лк", reply_markup=types.ReplyKeyboardRemove())
 
-@bot.message_handler(lambda message: message.text != "Да" and  message.text != "Нет"  and  message.text != "Хуй" and message.text != "Расписание сегодня" and message.text != "Расписание на неделю")
+
+@bot.message_handler(lambda message: message.text != "Да" and  message.text != "Нет" and  message.text != "ранд"  and  message.text != "Хуй" and message.text != "Расписание сегодня" and message.text != "Расписание на неделю")
 async def auth(message: types.Message):        
     user_id = message.from_user.id
     if db.child("Users").child(user_id).get().val()!=None and len(list(db.child("Users").child(user_id).get().val()))<2:
@@ -92,12 +93,33 @@ async def false(message: types.Message):
 @bot.message_handler(lambda message: message.text == "Хуй")
 async def zxc(message: types.Message):
     await message.reply("Сам хуй!")
-    print(message)
 
+#TODO докинуть номер недели, вытаскивать в изменении
 @bot.message_handler(lambda message: message.text == "Расписание на неделю")
 async def scheduleWeek(message: types.Message):
+    await message.answer("Смотрим Ваше расписание.")
     user_id = message.from_user.id
-    #parseTable(db.child("Users").child(user_id).get().val(), user_id)
+    kb = types.InlineKeyboardMarkup(row_width=2)
+    buttons = [types.InlineKeyboardButton(text="Предыдущая неделя", callback_data="previousWeek"), types.InlineKeyboardButton(text="Следующая неделя", callback_data="nextWeek")]
+    kb.add(*buttons)
+    numberWeek = 0
+    answer = db.child("Table").child(user_id).child(numberWeek).get().val()
+    if answer!=None:
+        await message.answer(answer, parse_mode=types.ParseMode.HTML, reply_markup=kb)
+    else:   await message.answer("Нет данных", reply_markup=kb)
+
+
+@bot.callback_query_handler(text="nextWeek")
+async def send_random_value(call: types.CallbackQuery):
+    print(call)
+    kb = types.InlineKeyboardMarkup(row_width=2)
+    buttons = [types.InlineKeyboardButton(text="Предыдущая неделя", callback_data="previousWeek"), types.InlineKeyboardButton(text="Следующая неделя", callback_data="nextWeek")]
+    kb.add(*buttons)
+    await call.message.edit_text(db.child("Table").child(call.from_user.id).child(1).get().val(), parse_mode=types.ParseMode.HTML, reply_markup=kb)
+
+@bot.callback_query_handler(text="previousWeek")
+async def send_random_value(call: types.CallbackQuery):
+    await call.message.answer("p[o[[po[")
 
 @bot.message_handler(lambda message: message.text == "Расписание сегодня")
 async def scheduleDay(message: types.Message):
@@ -132,40 +154,6 @@ async def pollAnswer(answer: types.PollAnswer):
                 print(timeSched[q])
                 db.child("Schedule").child(timeSched[q]).child(user_id).set(False)
     print(timeSched)
-
-def parseTable(user, user_id):
-    driver = webdriver.Chrome(service = s, options = chrome_options)
-    driver.get(url)
-    try:
-        login = WebDriverWait(driver, 1).until(
-        EC.visibility_of_element_located((By.NAME, "users")))
-    finally:
-        login.send_keys(user["login"])
-        driver.find_element(By.NAME,"parole").send_keys(user["password"])
-        driver.find_element(By.NAME, "logButton").click()
-        try:
-            button = WebDriverWait(driver, 1).until(EC.visibility_of_element_located((By.CLASS_NAME, "lm_item")))
-        finally:
-            button.click()
-            try:
-                sch = WebDriverWait(driver, 1).until(EC.visibility_of_element_located((By.LINK_TEXT, "Расписание")))
-            finally:
-                sch.click()
-                table = WebDriverWait(driver, 1).until(EC.visibility_of_element_located((By.XPATH, '//*[@id="rightpanel"]/div/table/tbody')))
-                rows = table.find_elements(By.TAG_NAME, "tr")
-                key = ""
-                for row in rows:
-                    matrixColumn = []
-                    column = row.find_elements(By.TAG_NAME, "td")
-                    if len(column)==1:
-                        key = column[0].text.split("\n")[1].replace(".", "-")
-                    else:
-                        for col in column:
-                            matrixColumn.append(col.text.replace("\n", " "))
-                        db.child("Users Schedule").child(user_id).update({key: str(matrixColumn)})
-                
-                    
-
 
 
 def checkAuth(loginUser, passwordUser):
@@ -202,11 +190,11 @@ async def senMessage():
                     lesone = les[1]
                 options.append(les[0]+" "+ lesone +" "+les[2]+" "+les[3])
             options.append("Не отмечать")
-            await bot.bot.send_poll(is_anonymous=False, allows_multiple_answers=True, question="На каких парах отмечать? Пожалуйста, не выбирайте пары, на которых преподаватель не начинает занятие. Если ин яз, то тыкнуть на 2 пункта, сорри это мой говнокод, вскоре исправлю.", 
+            bot.bot.send_poll(is_anonymous=False, allows_multiple_answers=True, question="На каких парах отмечать? Пожалуйста, не выбирайте пары, на которых преподаватель не начинает занятие. Если ин яз, то тыкнуть на 2 пункта, сорри это мой говнокод, вскоре исправлю.", 
         options=options, chat_id=user.key())
 #TODO: добавить время закрытия
 async def scheduler():
-    aioschedule.every().day.at("05:00").do(senMessage)
+    aioschedule.every().day.at("13:08").do(senMessage)
     while True:
         await aioschedule.run_pending()
         await asyncio.sleep(1)
