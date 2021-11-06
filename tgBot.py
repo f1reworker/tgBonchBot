@@ -171,7 +171,7 @@ def checkAuth(loginUser, passwordUser):
 
 @bot.callback_query_handler(text="+")
 async def send_random_value(call: types.CallbackQuery):
-    teacher = call.message.text.split("\n")[-1][5:]
+    teacher = call.message.text.split("\n")[-1][5:]+"|"+call.message.text.split("\n")[0]
     user_id = call.from_user.id
     timeLesson = call.message.text.split("\n")[0].split("-")[0].split("(")[-1].replace(".", ":")
     timeLesson = timeLesson.split(":")
@@ -213,7 +213,7 @@ async def senMessage():
                                                               f"заблокировали бота: *{block_users}*\n", parse_mode='Markdown')
 #TODO: добавить время закрытия
 async def scheduler():
-    aioschedule.every().day.at("05:30").do(senMessage)
+    aioschedule.every().day.at("21:08").do(senMessage)
     while True:
         await aioschedule.run_pending()
         await asyncio.sleep(1)
