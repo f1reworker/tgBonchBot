@@ -3,7 +3,7 @@ import asyncio
 import time
 
 import aiogram.utils.markdown as fmt
-from aiogram.utils.exceptions import BotBlocked
+from aiogram.utils.exceptions import BotBlocked, PollOptionsLengthTooLong
 import aioschedule
 import pyrebase
 from aiogram import Bot, Dispatcher, executor, types
@@ -42,12 +42,6 @@ token = Bot(token="2087293427:AAEqHp5QE7BK_7G8JNlDUdbhtKi9EqpMQdI")
 #token = Bot(token="2057472245:AAHXiB2teJOWQa7CXwH0uLd8cJItn4YvD4A")
 bot = Dispatcher(token)
 
-@bot.errors_handler(exception=BotBlocked)
-async def error_bot_blocked(update: types.Update):
-    user_id = update.message.chat.id
-    db.child("Users Schedule").child(user_id).remove()
-    db.child("Users").child(user_id).remove()
-    return True
 
 @bot.message_handler(commands="start")
 async def start(message: types.Message):
@@ -103,7 +97,6 @@ async def false(message: types.Message):
 async def zxc(message: types.Message):
     await message.reply("Сам хуй!")
 
-#TODO докинуть номер недели, вытаскивать в изменении
 @bot.message_handler(lambda message: message.text == "Расписание на неделю")
 async def scheduleWeek(message: types.Message):
     user_id = message.from_user.id
@@ -154,29 +147,6 @@ async def scheduleDay(message: types.Message):
             answer += (schedule[i][0]+ "\n" + "     " + fmt.hbold(schedule[i][1].split("\n")[0]) + "\n" + "       " + fmt.hitalic(schedule[i][1].split("\n")[1])+ "\n" + "     " + schedule[i][2]+"\n" + "     " +fmt.hcode(schedule[i][3]) + 2*"\n")
         await message.answer(answer, parse_mode=types.ParseMode.HTML)
     else:   await message.answer("Сегодня нет занятий.")
-@bot.poll_answer_handler()
-async def pollAnswer(answer: types.PollAnswer):
-    user_id = answer["user"]["id"]
-    timeSched = []
-    for i in answer["option_ids"]:
-        timeLesson = db.child("Users Schedule").child(user_id).child(int(i)).get().val()
-        if timeLesson==None:    return
-        timeLesson = timeLesson[0].split("-")[0].split("(")[-1].replace(".", ":")
-        timeLesson = timeLesson.split(":")
-        timeLesson = str(int(timeLesson[0])-3) + ":" + timeLesson[1]
-        if len(timeLesson)==4:  timeLesson = "0"+timeLesson
-        timeSched.append(timeLesson)
-    for q in range (0, len(timeSched)):
-            if timeSched[q]==timeSched[q-1] and len(timeSched)!=1:
-                Sched = timeSched[q].split(":")
-                timeSched = Sched[0]+":"+str(int(Sched[1])+5)
-                if len(timeSched)==4:  timeSched = timeSched.split(":")[0]+":"+"0"+timeSched.split(":")[1]
-                db.child("Schedule").child(timeSched).child(user_id).set(False)
-                print(timeSched)
-            else:
-                print(timeSched[q])
-                db.child("Schedule").child(timeSched[q]).child(user_id).set(False)
-    print(timeSched)
 
 
 def checkAuth(loginUser, passwordUser):
@@ -199,26 +169,51 @@ def checkAuth(loginUser, passwordUser):
             driver.quit()
             return True
 
+@bot.callback_query_handler(text="+")
+async def send_random_value(call: types.CallbackQuery):
+    teacher = call.message.text.split("\n")[-1][5:]
+    user_id = call.from_user.id
+    timeLesson = call.message.text.split("\n")[0].split("-")[0].split("(")[-1].replace(".", ":")
+    timeLesson = timeLesson.split(":")
+    timeLesson = str(int(timeLesson[0])-3) + ":" + timeLesson[1]
+    if len(timeLesson)==4:  timeLesson = "0"+timeLesson
+    db.child("Schedule").child(timeLesson).update({user_id: teacher})
+
+@bot.callback_query_handler(text="-")
+async def send_random_value(call: types.CallbackQuery):
+    user_id = call.from_user.id
+    timeLesson = call.message.text.split("\n")[0].split("-")[0].split("(")[-1].replace(".", ":")
+    timeLesson = timeLesson.split(":")
+    timeLesson = str(int(timeLesson[0])-3) + ":" + timeLesson[1]
+    if len(timeLesson)==4:  timeLesson = "0"+timeLesson
+    db.child("Schedule").child(timeLesson).child(user_id).remove()
+
 async def senMessage():
+    admin = 2125738023
+    await bot.bot.send_message(admin, f"*Рассылка началась \nБот оповестит когда рассылку закончит*", parse_mode='Markdown')
+    receive_users, block_users = 0, 0
     users = db.child("Users").get().each()
     for user in users:
-        options = []
+        kb = types.InlineKeyboardMarkup(row_width=2)
+        buttons = [types.InlineKeyboardButton(text="Да", callback_data="+"), types.InlineKeyboardButton(text="Нет", callback_data="-")]
+        kb.add(*buttons)
         lesson = db.child("Users Schedule").child(user.key()).get().val()
-
-        if lesson!=None:    
-            for les in lesson:
-                if len(les[1])>40:
-                    lesone = les[1][:41] + "..."
-                else:
-                    lesone = les[1]
-                options.append(les[0]+" "+ lesone + " "+les[3].split(",")[0])
-            options.append("Не отмечать")
-            await bot.bot.send_poll(is_anonymous=False, allows_multiple_answers=True, question="На каких парах отмечать? Пожалуйста, не выбирайте пары, на которых преподаватель не начинает занятие. Если ин яз, то тыкнуть на 2 пункта, сорри это мой говнокод, вскоре исправлю.", 
-        options=options, chat_id=user.key())
-        if user==users[-1]: return
+        if lesson!=None:
+            try:
+                await bot.bot.send_message(user.key(), "На каких парах отмечать? Пожалуйста, не выбирайте пары, на которых преподаватель не начинает занятие.")
+                for les in lesson:
+                    await bot.bot.send_message(user.key(), les[0]+ "\n" + "     " + fmt.hbold(les[1].split("\n")[0]) + "\n" + "       " + fmt.hitalic(les[1].split("\n")[1])+ "\n" + "     " + les[2]+"\n" + "     " +fmt.hcode(les[3]), parse_mode=types.ParseMode.HTML, reply_markup=kb)
+                receive_users+=1
+            except BotBlocked:
+                db.child("Users").child(user.key()).remove()
+                db.child("Users Schedule").child(user.key()).remove()
+                block_users += 1
+    await bot.bot.send_message(admin, f"*Рассылка была завершена *\n"
+                                                              f"получили сообщение: *{receive_users}*\n"
+                                                              f"заблокировали бота: *{block_users}*\n", parse_mode='Markdown')
 #TODO: добавить время закрытия
 async def scheduler():
-    aioschedule.every().day.at("6:05").do(senMessage)
+    aioschedule.every().day.at("05:30").do(senMessage)
     while True:
         await aioschedule.run_pending()
         await asyncio.sleep(1)
