@@ -211,14 +211,14 @@ async def senMessage():
                     lesone = les[1][:41] + "..."
                 else:
                     lesone = les[1]
-                options.append(les[0]+" "+ lesone + " "+les[3].replace.split(",")[0])
+                options.append(les[0]+" "+ lesone + " "+les[3].split(",")[0])
             options.append("Не отмечать")
             await bot.bot.send_poll(is_anonymous=False, allows_multiple_answers=True, question="На каких парах отмечать? Пожалуйста, не выбирайте пары, на которых преподаватель не начинает занятие. Если ин яз, то тыкнуть на 2 пункта, сорри это мой говнокод, вскоре исправлю.", 
         options=options, chat_id=user.key())
         if user==users[-1]: return
 #TODO: добавить время закрытия
 async def scheduler():
-    aioschedule.every().day.at("5:30").do(senMessage)
+    aioschedule.every().day.at("6:05").do(senMessage)
     while True:
         await aioschedule.run_pending()
         await asyncio.sleep(1)
