@@ -213,7 +213,7 @@ async def senMessage():
                                                               f"заблокировали бота: *{block_users}*\n", parse_mode='Markdown')
 #TODO: добавить время закрытия
 async def scheduler():
-    aioschedule.every().day.at("21:08").do(senMessage)
+    aioschedule.every().day.at("05:30").do(senMessage)
     while True:
         await aioschedule.run_pending()
         await asyncio.sleep(1)
