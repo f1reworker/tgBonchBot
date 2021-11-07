@@ -108,7 +108,7 @@ async def scheduleWeek(message: types.Message):
     answer = fmt.hbold("Неделя №") + fmt.hbold(str(numberWeek)) + "\n" + answerSchedule
     if answerSchedule!=None:
         answer = fmt.hbold("Неделя №") + fmt.hbold(str(numberWeek)) + "\n" + answerSchedule
-        await message.answer(answer, parse_mode=types.ParseMode.HTML, reply_markup=kb)
+        await message.answer(answer, parse_mode=types.ParseMode.HTML, reply_markup=kb, disable_web_page_preview=True)
     else:   await message.answer("Нет данных", reply_markup=kb)
 
 
@@ -121,7 +121,7 @@ async def send_random_value(call: types.CallbackQuery):
     answerSchedule = db.child("Table").child(call.from_user.id).child(numberWeek+1).get().val()
     if answerSchedule!=None:
         answer = fmt.hbold("Неделя №") + fmt.hbold(str(numberWeek+1)) +  "\n" + answerSchedule
-        await call.message.edit_text(answer, parse_mode=types.ParseMode.HTML, reply_markup=kb)
+        await call.message.edit_text(answer, parse_mode=types.ParseMode.HTML, reply_markup=kb, disable_web_page_preview=True)
     else:   await call.message.edit_text(fmt.hbold("Неделя №") + fmt.hbold(str(numberWeek+1)) +  2*"\n" + "Данных нет.", parse_mode=types.ParseMode.HTML, reply_markup=kb)
 
 @bot.callback_query_handler(text="previousWeek")
@@ -134,7 +134,7 @@ async def send_random_value(call: types.CallbackQuery):
     if numberWeek==1:   return
     if answerSchedule!=None:
         answer = fmt.hbold("Неделя №") + fmt.hbold(str(numberWeek-1)) +  "\n" + answerSchedule
-        await call.message.edit_text(answer, parse_mode=types.ParseMode.HTML, reply_markup=kb)
+        await call.message.edit_text(answer, parse_mode=types.ParseMode.HTML, reply_markup=kb, disable_web_page_preview=True)
     else:   await call.message.edit_text(fmt.hbold("Неделя №") + fmt.hbold(str(numberWeek-1)) +  2*"\n" + "Данных нет.", parse_mode=types.ParseMode.HTML, reply_markup=kb)
 
 @bot.message_handler(lambda message: message.text == "Расписание сегодня")
@@ -143,9 +143,11 @@ async def scheduleDay(message: types.Message):
     schedule = db.child("Users Schedule").child(user_id).get().val()
     answer = ""
     if schedule!=None:
-        for i in range(0, len(schedule)):
-            answer += (schedule[i][0]+ "\n" + "     " + fmt.hbold(schedule[i][1].split("\n")[0]) + "\n" + "       " + fmt.hitalic(schedule[i][1].split("\n")[1])+ "\n" + "     " + schedule[i][2]+"\n" + "     " +fmt.hcode(schedule[i][3]) + 2*"\n")
-        await message.answer(answer, parse_mode=types.ParseMode.HTML)
+        for les in schedule:
+            if ("Спортивные площадки" in les[2]) or ("Дистанционно" in les[2]):  cab = les[2]
+            else: cab = fmt.hlink(url="https://www.nav.sut.ru/?cab=k" + les[2].split("/")[-1] + "-" + les[2].split(";")[0].replace("-", "a"), title=les[2].split(";")[0].replace("-", "/")+"/"+les[2].split("/")[-1])
+            answer += (les[0]+ "\n" + "     " + fmt.hbold(les[1].split("\n")[0]) + "\n" + "       " + fmt.hitalic(les[1].split("\n")[1])+ "\n" + "     " + cab+"\n" + "     " +les[3] + 2*"\n")
+        await message.answer(answer, parse_mode=types.ParseMode.HTML, disable_web_page_preview=True)
     else:   await message.answer("Сегодня нет занятий.")
 
 
@@ -202,7 +204,9 @@ async def senMessage():
             try:
                 await bot.bot.send_message(user.key(), "На каких парах отмечать? Пожалуйста, не выбирайте пары, на которых преподаватель не начинает занятие.")
                 for les in lesson:
-                    await bot.bot.send_message(user.key(), les[0]+ "\n" + "     " + fmt.hbold(les[1].split("\n")[0]) + "\n" + "       " + fmt.hitalic(les[1].split("\n")[1])+ "\n" + "     " + les[2]+"\n" + "     " +fmt.hcode(les[3]), parse_mode=types.ParseMode.HTML, reply_markup=kb)
+                    if ("Спортивные площадки" in les[2]) or ("Дистанционно" in les[2]):  cab = les[2]
+                    else: cab = fmt.hlink(url="https://www.nav.sut.ru/?cab=k" + les[2].split("/")[-1] + "-" + les[2].split(";")[0].replace("-", "a"), title=les[2].split(";")[0].replace("-", "/")+"/"+les[2].split("/")[-1])
+                    await bot.bot.send_message(user.key(), les[0]+ "\n" + "     " + fmt.hbold(les[1].split("\n")[0]) + "\n" + "       " + fmt.hitalic(les[1].split("\n")[1])+ "\n" + "     " + cab+"\n" + "     " +les[3], parse_mode=types.ParseMode.HTML, reply_markup=kb, disable_web_page_preview=True)
                 receive_users+=1
             except BotBlocked:
                 db.child("Users").child(user.key()).remove()
