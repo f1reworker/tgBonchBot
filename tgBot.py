@@ -215,7 +215,6 @@ async def senMessage():
     await bot.bot.send_message(admin, f"*Рассылка была завершена *\n"
                                                               f"получили сообщение: *{receive_users}*\n"
                                                               f"заблокировали бота: *{block_users}*\n", parse_mode='Markdown')
-#TODO: добавить время закрытия
 async def scheduler():
     aioschedule.every().day.at("05:30").do(senMessage)
     while True:
