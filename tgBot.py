@@ -224,6 +224,7 @@ async def scheduler():
 async def on_startup(_):
     asyncio.create_task(scheduler())
 
+
 if __name__ == '__main__':
     executor.start_polling(bot, skip_updates=False, on_startup=on_startup)
 
