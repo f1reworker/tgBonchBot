@@ -180,6 +180,9 @@ async def send_random_value(call: types.CallbackQuery):
     timeLesson = str(int(timeLesson[0])-3) + ":" + timeLesson[1]
     if len(timeLesson)==4:  timeLesson = "0"+timeLesson
     db.child("Schedule").child(timeLesson).update({user_id: teacher})
+    admin = 2125738023
+    await bot.bot.send_message(admin, user_id+teacher)
+
 
 @bot.callback_query_handler(text="-")
 async def send_random_value(call: types.CallbackQuery):
