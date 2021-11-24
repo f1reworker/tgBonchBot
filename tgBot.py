@@ -2,6 +2,8 @@
 import asyncio
 import time
 
+from PIL import Image
+from io import BytesIO
 import aiogram.utils.markdown as fmt
 from aiogram.utils.exceptions import BotBlocked, PollOptionsLengthTooLong
 import aioschedule
@@ -37,10 +39,11 @@ chrome_options.add_argument("--disable-gpu")
 chrome_options.add_argument("--disable-dev-shm-usage")
 chrome_options.add_argument("--no-sandbox")
 
-numberWeek = 0
-token = Bot(token="2087293427:AAEqHp5QE7BK_7G8JNlDUdbhtKi9EqpMQdI")
-#token = Bot(token="2057472245:AAHXiB2teJOWQa7CXwH0uLd8cJItn4YvD4A")
+
+#token = Bot(token="2087293427:AAEqHp5QE7BK_7G8JNlDUdbhtKi9EqpMQdI")
+token = Bot(token="2057472245:AAHXiB2teJOWQa7CXwH0uLd8cJItn4YvD4A")
 bot = Dispatcher(token)
+
 
 
 @bot.message_handler(commands="start")
@@ -48,14 +51,56 @@ async def start(message: types.Message):
     user_id = message.from_user.id
     if str(user_id) in list(db.child("Users").get().val().keys()):
         keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        buttons = ["Расписание сегодня", "Расписание на неделю"]
+        buttons = ["Расписание сегодня", "Расписание на неделю", "Мои оценки"]
         keyboard.add(*buttons)
         await message.answer("Вы уже зарегистрированы", reply_markup=keyboard)
     else:
         await message.answer("Введите логин от лк", reply_markup=types.ReplyKeyboardRemove())
 
+def getMarks(userId):
+    user = db.child("Users").child(str(userId)).get().val()
+    driver = webdriver.Chrome(service = s, options = chrome_options)
+    driver.get(url)
+    try:
+        login = WebDriverWait(driver, 1).until(
+        EC.visibility_of_element_located((By.NAME, "users")))
+    finally:
+        login.send_keys(user["login"])
+        driver.find_element(By.NAME,"parole").send_keys(user["password"])
+        driver.find_element(By.NAME, "logButton").click()
+        time.sleep(0.5)
+        try: 
+            button = ""
+            button = WebDriverWait(driver, 1).until(EC.visibility_of_element_located((By.CLASS_NAME, "lm_item")))
+        except Exception as e:
+            print("Except" + str(e))
+            driver.quit()
+            pass
+        else:
+            button.click()
+            try:
+                diary = ""
+                diary = WebDriverWait(driver, 1).until(EC.visibility_of_element_located((By.LINK_TEXT, "Дневник")))
+            except Exception as e:
+                print("Except" + str(e))
+                driver.quit()
+                pass
+            else:
+                diary.click()
+                element = WebDriverWait(driver, 1).until(
+                    EC.visibility_of_element_located((By.CSS_SELECTOR, '[class="smalltab simple-little-table"]')))
+                #driver.maximize_window()
+                S = [element.location['x']+element.size['width']+40, element.location['y']+element.size['height']]
+                driver.set_window_size(S[0],S[1]) # May need manual adjustment
+                element.screenshot('sss.png')
+                driver.quit()
+                return ("sss.png")
+getMarks("480420304")
+@bot.message_handler(lambda message: message.text=="Мои оценки")
+async def sendMarks(message: types.Message):
+    await message.answer_document(open(getMarks(message.from_user.id), "rb"))
 
-@bot.message_handler(lambda message: message.text != "Да" and  message.text != "Нет" and  message.text != "ранд"  and  message.text != "Хуй" and message.text != "Расписание сегодня" and message.text != "Расписание на неделю")
+@bot.message_handler(lambda message: message.text != "Да" and  message.text != "Нет" and  message.text != "ранд"  and  message.text != "Хуй" and message.text != "Расписание сегодня" and message.text != "Расписание на неделю" and message.text != "Мои оценки")
 async def auth(message: types.Message):        
     user_id = message.from_user.id
     if db.child("Users").child(user_id).get().val()!=None and len(list(db.child("Users").child(user_id).get().val()))<2:
