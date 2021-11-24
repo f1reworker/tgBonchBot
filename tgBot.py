@@ -2,8 +2,6 @@
 import asyncio
 import time
 
-from PIL import Image
-from io import BytesIO
 import aiogram.utils.markdown as fmt
 from aiogram.utils.exceptions import BotBlocked, PollOptionsLengthTooLong
 import aioschedule
