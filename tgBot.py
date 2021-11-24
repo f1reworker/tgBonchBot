@@ -87,13 +87,11 @@ def getMarks(userId):
                 diary.click()
                 element = WebDriverWait(driver, 1).until(
                     EC.visibility_of_element_located((By.CSS_SELECTOR, '[class="smalltab simple-little-table"]')))
-                #driver.maximize_window()
-                S = [element.location['x']+element.size['width']+40, element.location['y']+element.size['height']]
-                driver.set_window_size(S[0],S[1]) # May need manual adjustment
+                S = [element.location['x']+element.size['width']+700, element.location['y']+element.size['height']]
+                driver.set_window_size(S[0],S[1])
                 element.screenshot('sss.png')
                 driver.quit()
                 return ("sss.png")
-getMarks("480420304")
 @bot.message_handler(lambda message: message.text=="Мои оценки")
 async def sendMarks(message: types.Message):
     await message.answer_document(open(getMarks(message.from_user.id), "rb"))
