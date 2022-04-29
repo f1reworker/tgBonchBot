@@ -16,15 +16,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 
-firebaseConfig = {
-    "apiKey": "AIzaSyA6eRXO1BLuAZ3OTLvSwKbtj85Ow9E-gMo",
-    "authDomain": "bonchbot.firebaseapp.com",
-    "databaseURL": "https://bonchbot-default-rtdb.firebaseio.com",
-    "projectId": "bonchbot",
-    "storageBucket": "bonchbot.appspot.com",
-    "messagingSenderId": "25320630490",
-    "appId": "1:25320630490:web:c51273f6cf9e7a7fc3dde3"
-    }
+
 firebase = pyrebase.initialize_app(firebaseConfig)
 db= firebase.database()
 
@@ -37,9 +29,6 @@ chrome_options.add_argument("--disable-gpu")
 chrome_options.add_argument("--disable-dev-shm-usage")
 chrome_options.add_argument("--no-sandbox")
 
-
-token = Bot(token="2087293427:AAEqHp5QE7BK_7G8JNlDUdbhtKi9EqpMQdI")
-#token = Bot(token="2057472245:AAHXiB2teJOWQa7CXwH0uLd8cJItn4YvD4A")
 bot = Dispatcher(token)
 
 
